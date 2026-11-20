@@ -1,10 +1,13 @@
 const { chromium, devices } = require('playwright');
-const OUT = '/tmp/claude-0/e2e';
+const OUT = process.env.OUT || require('path').join(__dirname, 'shots');
+require('fs').mkdirSync(OUT, { recursive: true });
 const API = 'http://localhost:8000';
 const BASE = process.env.BASE || 'http://localhost:8080';
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices['iPhone 14'] });
+  // Sin límite durante la prueba: las repeticiones del mismo día acumulan minutos.
+  await fetch(`${API}/api/settings`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ daily_limit_minutes: 0 }) });
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', m => { if (m.type() === 'error' && !/ERR_TUNNEL|ytimg|youtube/.test(m.text())) errors.push(m.text()); });

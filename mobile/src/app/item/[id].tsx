@@ -34,7 +34,7 @@ export default function ItemScreen() {
   const vertical = item.format === 'short' && item.platform !== 'youtube';
 
   const toggle = async (kind: 'like' | 'unlike' | 'save' | 'unsave') => {
-    setItem(await api.event(item.id, kind));
+    try { setItem(await api.event(item.id, kind)); } catch { setMsg('Sin conexión con el servidor'); }
   };
 
   return (
@@ -83,7 +83,9 @@ export default function ItemScreen() {
           style={[ui.input, { minHeight: 90, textAlignVertical: 'top' }]} testID="detail-note" />
         <Button label="Guardar nota" busy={busy} onPress={async () => {
           setBusy(true);
-          try { setItem(await api.note(item.id, note)); setMsg('Nota guardada'); } finally { setBusy(false); }
+          try { setItem(await api.note(item.id, note)); setMsg('Nota guardada'); }
+          catch { setMsg('No se pudo guardar la nota'); }
+          finally { setBusy(false); }
         }} />
         {msg ? <Text style={{ color: colors.accent }}>{msg}</Text> : null}
       </Card>

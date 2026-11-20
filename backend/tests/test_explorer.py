@@ -55,3 +55,64 @@ def test_durations():
     assert iso8601_duration("PT45S") == 45
     assert youtube_format(45) == "short"
     assert youtube_format(600) == "long"
+
+
+# ------------------------------------------- explorador completo (red simulada) --
+
+def _mock_transport(calls: list):
+    import hashlib
+    from datetime import datetime, timezone
+
+    import httpx
+
+    now = datetime.now(timezone.utc)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        url = str(request.url)
+        if request.headers.get("if-none-match") == '"v1"':
+            return httpx.Response(304)
+        if "feeds/videos.xml" in url:
+            cid = request.url.params.get("channel_id", "x")
+            vid = hashlib.md5(cid.encode()).hexdigest()[:11]
+            body = YT_FEED.replace(b"abcdefghijk", vid.encode()).replace(
+                b"2026-11-18T10:00:00+00:00", now.isoformat().encode())
+            return httpx.Response(200, content=body, headers={"etag": '"v1"'})
+        if "oembed" in url:
+            return httpx.Response(503)  # sin verificar: no marca nada como roto
+        slug = hashlib.md5(url.encode()).hexdigest()[:8]
+        body = RSS.replace(b"https://example.com/cve", f"https://example.com/{slug}".encode()).replace(
+            b"Wed, 18 Nov 2026 10:00:00 GMT", now.strftime("%a, %d %b %Y %H:%M:%S GMT").encode())
+        return httpx.Response(200, content=body, headers={"etag": '"v1"'})
+
+    return httpx.MockTransport(handler)
+
+
+def test_explorer_run_with_mocked_network(client, monkeypatch):
+    import httpx
+
+    from app.agents import explorer
+
+    calls: list = []
+    transport = _mock_transport(calls)
+    monkeypatch.setattr(explorer, "http_client", lambda: httpx.AsyncClient(transport=transport))
+
+    # TestClient ejecuta la tarea en segundo plano antes de devolver la respuesta.
+    assert client.post("/api/agents/run", json={"agent": "explorer", "force": True}).status_code == 200
+    run = next(r for r in client.get("/api/agents/runs").json() if r["agent"] == "explorer")
+    assert run["ok"], run["error"]
+    first = run["stats"]
+    assert first["creators"] > 0 and first["sources"] > 0
+    assert first["new_items"] >= first["creators"]
+    assert first["validated"]["broken"] == 0
+    assert first["analyst"]  # lo nuevo pasa por el analista
+
+    # Segunda pasada: ETag → 304, nada nuevo ni duplicado.
+    n_calls = len(calls)
+    client.post("/api/agents/run", json={"agent": "explorer", "force": True})
+    second = next(r for r in client.get("/api/agents/runs").json() if r["agent"] == "explorer")["stats"]
+    assert second["new_items"] == 0
+    assert any(r.headers.get("if-none-match") for r in calls[n_calls:])
+
+    found = client.get("/api/search", params={"q": "OpenSSH"}).json()
+    assert found, "los artículos ingeridos deben poder buscarse"
