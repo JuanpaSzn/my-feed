@@ -1,0 +1,12 @@
+fastapi==0.165.0
+uvicorn==0.54.0
+uvloop==0.22.1
+httptools==0.7.1
+sqlalchemy[asyncio]==2.1.9
+asyncpg==0.32.0
+aiosqlite==0.22.1
+redis==8.1.0
+httpx==0.28.1
+feedparser==6.0.14
+pydantic-settings==2.16.3
+anthropic==2.11.0

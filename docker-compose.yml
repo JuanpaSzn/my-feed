@@ -1,0 +1,79 @@
+# MyFeed: stack completo (API + PostgreSQL + Redis), pensado para un PC modesto.
+# Uso:  docker compose up -d        (la API queda en http://<IP-de-tu-PC>:8000)
+# Consumo aproximado en reposo: ~250 MB de RAM entre los tres contenedores.
+name: myfeed
+
+services:
+  api:
+    build: ./backend
+    image: myfeed-api:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://myfeed:${POSTGRES_PASSWORD:-myfeed}@db:5432/myfeed
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    mem_limit: 384m
+    cpus: 1.0
+    logging: &logging
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: myfeed
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myfeed}
+      POSTGRES_DB: myfeed
+    # Ajustes para poca memoria: suficiente para cientos de miles de ítems.
+    command: >
+      postgres -c shared_buffers=48MB -c max_connections=25 -c work_mem=4MB
+      -c maintenance_work_mem=32MB -c effective_cache_size=128MB -c wal_buffers=4MB
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myfeed -d myfeed"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 256m
+    cpus: 0.75
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Solo caché: sin persistencia en disco y con tope de memoria.
+    command: redis-server --save "" --appendonly no --maxmemory 32mb --maxmemory-policy allkeys-lru
+    mem_limit: 64m
+    cpus: 0.25
+    logging: *logging
+
+  # Opcional: la app en el navegador (http://<IP-de-tu-PC>:8080).
+  # Se activa con:  docker compose --profile web up -d
+  web:
+    profiles: ["web"]
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile.web
+    image: myfeed-web:latest
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    mem_limit: 32m
+    cpus: 0.25
+    logging: *logging
+
+volumes:
+  pgdata:
