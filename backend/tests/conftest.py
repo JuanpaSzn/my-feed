@@ -2,7 +2,7 @@ import os
 import tempfile
 
 _tmp = tempfile.mkdtemp(prefix="myfeed-test-")
-os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp}/test.db"
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite+aiosqlite:///{_tmp}/test.db"
 os.environ["SCHEDULER_ENABLED"] = "false"
 os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["YOUTUBE_API_KEY"] = ""

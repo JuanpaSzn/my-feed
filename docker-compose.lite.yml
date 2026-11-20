@@ -1,0 +1,28 @@
+# MyFeed en modo "lite": un único contenedor con SQLite y caché en memoria.
+# Ideal si el PC va justo de recursos (~100 MB de RAM).
+# Uso:  docker compose -f docker-compose.lite.yml up -d
+name: myfeed-lite
+
+services:
+  api:
+    build: ./backend
+    image: myfeed-api:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////data/myfeed.db
+      REDIS_URL: ""
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - myfeed-data:/data
+    mem_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+volumes:
+  myfeed-data:
