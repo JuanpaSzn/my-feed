@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "MyFeed",
+    "slug": "myfeed",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.alexis.myfeed",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "MyFeed se conecta a tu servidor en la red local para cargar tu feed."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0D14",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.alexis.myfeed"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "MyFeed",
+      "themeColor": "#0A0D14",
+      "backgroundColor": "#0A0D14"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      "expo-web-browser",
+      "expo-font"
+    ],
+    "scheme": "myfeed",
+    "backgroundColor": "#0A0D14",
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

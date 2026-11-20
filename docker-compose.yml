@@ -58,5 +58,22 @@ services:
     cpus: 0.25
     logging: *logging
 
+  # Opcional: la app en el navegador (http://<IP-de-tu-PC>:8080).
+  # Se activa con:  docker compose --profile web up -d
+  web:
+    profiles: ["web"]
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile.web
+    image: myfeed-web:latest
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    mem_limit: 32m
+    cpus: 0.25
+    logging: *logging
+
 volumes:
   pgdata:

@@ -1,0 +1,16 @@
+# Versión web de MyFeed (opcional): sirve la app en el navegador, también como
+# "app" en la pantalla de inicio del iPhone (Safari → Compartir → Añadir a inicio).
+# Se construye una sola vez; luego nginx sirve archivos estáticos con ~5 MB de RAM.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=secret,id=ca,required=false \
+    if [ -f /run/secrets/ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca; fi; \
+    npm ci --no-audit --no-fund --loglevel=error
+COPY . .
+RUN EXPO_OFFLINE=1 CI=1 npx expo export --platform web --output-dir dist
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
